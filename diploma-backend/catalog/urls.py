@@ -1,8 +1,8 @@
 from django.urls import path
-from .views import ProductListView, ProductDetailView, PopularProductsView, LimitedProductsView, BannersView
+from .views import ProductListView, ProductDetailView, PopularProductsView, LimitedProductsView, BannersView, CategoryListView
 from .basket_views import BasketView
 from .order_views import OrderView
-from .profile_views import ProfileView
+from users.views import ProfileView
 from .auth_views import SignInView, SignUpView, SignOutView
 
 urlpatterns = [
@@ -17,4 +17,5 @@ urlpatterns = [
     path("products/popular/", PopularProductsView.as_view()),
     path("products/limited/", LimitedProductsView.as_view()),
     path("banners/", BannersView.as_view()),
+    path("categories/", CategoryListView.as_view()),
 ]

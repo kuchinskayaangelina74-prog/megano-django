@@ -37,7 +37,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("catalog.urls")),
-    path("", TemplateView.as_view(template_name="index.html")),
+    path("", include("frontend.urls")),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
