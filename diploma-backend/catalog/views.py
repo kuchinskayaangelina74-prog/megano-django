@@ -38,9 +38,15 @@ class PopularProductsView(APIView):
                 "id": p.id,
                 "title": p.title,
                 "price": float(p.price),
+                "images": [
+                    {
+                        "src": p.image.url,
+                        "alt": p.title
+                    }
+                ] if p.image else []
             })
 
-        return Response({"items": items})
+        return Response(items)
 
 
 class LimitedProductsView(APIView):
@@ -54,9 +60,15 @@ class LimitedProductsView(APIView):
                 "id": p.id,
                 "title": p.title,
                 "price": float(p.price),
+                "images": [
+                    {
+                        "src": p.image.url,
+                        "alt": p.title
+                    }
+                ] if p.image else []
             })
 
-        return Response({"items": items})
+        return Response(items)
     
 
 class BannersView(APIView):
@@ -69,12 +81,17 @@ class BannersView(APIView):
                 "id": p.id,
                 "title": p.title,
                 "price": float(p.price),
-                "image": p.image.url if p.image else None,
+                "images": [
+                    {
+                        "src": p.image.url,
+                        "alt": p.title
+                    }
+                ] if p.image else []
             }
             for p in products
         ]
 
-        return Response({"items": items})
+        return Response(items)
 
 
 class CategoryListView(ListAPIView):

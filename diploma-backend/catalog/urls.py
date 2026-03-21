@@ -8,14 +8,17 @@ from .auth_views import SignInView, SignUpView, SignOutView
 urlpatterns = [
     path("catalog/", ProductListView.as_view(), name="catalog"),
     path("product/<int:pk>/", ProductDetailView.as_view(), name="product-detail"),
-    path("basket/", BasketView.as_view(), name="basket"),
-    path("orders/", OrderView.as_view(), name="orders"),
-    path("profile/", ProfileView.as_view(), name="profile"),
-    path("sign-in/", SignInView.as_view(), name="signin"),
-    path("sign-up/", SignUpView.as_view(), name="signup"),
-    path("sign-out/", SignOutView.as_view(), name="signout"),
-    path("products/popular/", PopularProductsView.as_view()),
-    path("products/limited/", LimitedProductsView.as_view()),
-    path("banners/", BannersView.as_view()),
-    path("categories/", CategoryListView.as_view()),
+    
+    path("basket", BasketView.as_view(), name="basket"),
+    path("orders", OrderView.as_view(), name="orders"),
+    path("profile", ProfileView.as_view(), name="profile"),
+    
+    path("sign-in", SignInView.as_view(), name="signin"),
+    path("sign-up", SignUpView.as_view(), name="signup"),
+    path("sign-out", SignOutView.as_view(), name="signout"),
+    
+    path("products/popular", PopularProductsView.as_view()),
+    path("products/limited", LimitedProductsView.as_view()),
+    path("banners", BannersView.as_view()),
+    path("categories", CategoryListView.as_view()),
 ]
