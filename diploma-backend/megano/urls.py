@@ -22,6 +22,7 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
+from orders.views import BasketView
 
 
 schema_view = get_schema_view(
@@ -38,6 +39,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     path("api/", include("catalog.urls")), 
+
+    path("api/basket/", BasketView.as_view()),
+    path("api/orders/basket/", BasketView.as_view()),
+
     path("api/orders/", include("orders.urls")),
     path("api/users/", include("users.urls")),
 
