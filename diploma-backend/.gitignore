@@ -1,0 +1,9 @@
+.DS_Store
+.png
+db.sqlite3
+__pycache__/
+*.pyc
+media/
+staticfiles/
+diploma-frontend/
+__pycache__/
