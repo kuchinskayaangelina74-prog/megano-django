@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Category, Tag
+from .models import Product, Category, Tag, ProductImage
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -31,11 +31,18 @@ class TagSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    src = serializers.ImageField(source="image")
+
+    class Meta:
+        model = ProductImage
+        fields = ("src", "alt")
+
+
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
-    images = serializers.SerializerMethodField()
-
+    images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -48,12 +55,10 @@ class ProductSerializer(serializers.ModelSerializer):
             "images",
         ]
 
-    def get_images(self, obj):
-        if obj.image:
-            return [
-                {
-                    "src": obj.image.url,
-                    "alt": obj.title
-                }
-            ]
-        return []
+
+
+
+
+
+
+

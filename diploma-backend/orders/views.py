@@ -1,7 +1,9 @@
+from django.contrib.auth.models import User
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from catalog.models import Product
+from .models import Order, OrderItem
 # Create your views here.
 
 
@@ -62,12 +64,57 @@ class BasketView(APIView):
 
 
 class OrderView(APIView):
+
     def get(self, request):
-        return Response({
-            "orders": []
-        })
+        user = User.objects.first() 
+
+        orders = Order.objects.filter(user=user)
+
+        data = []
+        for order in orders:
+            items = []
+            for item in order.items.all():
+                items.append({
+                    "product": item.product.title,
+                    "count": item.count
+                })
+
+            data.append({
+                "id": order.id,
+                "total": float(order.total_price),
+                "items": items
+            })
+
+        return Response({"orders": data})
+
 
     def post(self, request):
+        basket = request.session.get("basket", {})
+        user = User.objects.first()  
+
+        if not basket:
+            return Response({"error": "Basket is empty"}, status=400)
+
+        total = 0
+        order = Order.objects.create(user=user, total_price=0)
+
+        for product_id, count in basket.items():
+            product = Product.objects.get(id=product_id)
+
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                count=count
+            )
+
+            total += product.price * count
+
+        order.total_price = total
+        order.save()
+
+        request.session["basket"] = {}
+
         return Response({
-            "status": "ok"
+            "status": "order created",
+            "order_id": order.id
         })

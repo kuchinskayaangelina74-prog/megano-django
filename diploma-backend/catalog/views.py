@@ -9,15 +9,38 @@ class ProductListView(ListAPIView):
     serializer_class = ProductSerializer
 
     def get_queryset(self):
-        queryset = Product.objects.select_related("category").prefetch_related("tags")
+        queryset = Product.objects.select_related("category").prefetch_related("tags", "images")
+
+        search = self.request.GET.get("search")
+        if search:
+            queryset = queryset.filter(title__icontains=search)
 
         category = self.request.GET.get("category")
         if category and category != "0":
             queryset = queryset.filter(category__id=category)
 
+        min_price = self.request.GET.get("minPrice")
+        max_price = self.request.GET.get("maxPrice")
+
+        if min_price:
+           queryset = queryset.filter(price__gte=min_price)
+
+        if max_price:
+           queryset = queryset.filter(price__lte=max_price)
+
+        tags = self.request.GET.getlist("tags")
+        if tags:
+            queryset = queryset.filter(tags__id__in=tags).distinct()
+
         sort = self.request.GET.get("sort")
         if sort:
-            queryset = queryset.order_by(sort)
+            if sort == "price":
+                queryset = queryset.order_by("price")
+            elif sort == "-price":
+                queryset = queryset.order_by("-price")
+            
+            elif sort == "reviews":
+                queryset = queryset.order_by("-id")
 
         return queryset
 
@@ -40,10 +63,18 @@ class PopularProductsView(APIView):
                 "price": float(p.price),
                 "images": [
                     {
-                        "src": p.image.url,
-                        "alt": p.title
+                        "src": request.build_absolute_uri(img.image.url),
+                        "alt": img.alt
                     }
-                ] if p.image else []
+                    for img in p.images.all()
+                ] if  p.images.exists() else (
+                    [
+                        {
+                            "src": request.build_absolute_uri(p.image.url),
+                            "alt": p.title
+                        }
+                    ]if p.image else []
+                )
             })
 
         return Response(items)
@@ -62,10 +93,18 @@ class LimitedProductsView(APIView):
                 "price": float(p.price),
                 "images": [
                     {
-                        "src": p.image.url,
-                        "alt": p.title
+                        "src": request.build_absolute_uri(img.image.url),
+                        "alt": img.alt
                     }
-                ] if p.image else []
+                    for img in p.images.all()
+                ] if p.images.exists() else (
+                    [
+                        {
+                            "src": request.build_absolute_uri(p.image.url),
+                            "alt": p.title
+                        }
+                    ] if p.image else []
+                )
             })
 
         return Response(items)
@@ -74,7 +113,7 @@ class LimitedProductsView(APIView):
 class BannersView(APIView):
 
     def get(self, request):
-        products = Product.objects.all()[:3]
+        products = Product.objects.select_related("category").prefetch_related("images", "tags").all()[:3]
 
         items = [
             {
@@ -83,10 +122,18 @@ class BannersView(APIView):
                 "price": float(p.price),
                 "images": [
                     {
-                        "src": p.image.url,
-                        "alt": p.title
+                        "src": request.build_absolute_uri(img.image.url),
+                        "alt": img.alt
                     }
-                ] if p.image else []
+                    for img in p.images.all()
+                ] if p.images.exists() else (
+                    [
+                        {
+                            "src":request.build_absolute_uri(p.image.url),
+                            "alt": p.title
+                        }
+                    ] if p.image else []
+                )
             }
             for p in products
         ]
@@ -97,3 +144,9 @@ class BannersView(APIView):
 class CategoryListView(ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
+
+
+
+
+    
