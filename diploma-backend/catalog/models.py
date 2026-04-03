@@ -44,3 +44,12 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"{self.product.title} image"
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
+    author = models.CharField(max_length=100)
+    email = models.EmailField()
+    text = models.TextField()
+    rate = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)

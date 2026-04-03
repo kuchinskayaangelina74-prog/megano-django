@@ -38,7 +38,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    path("api/", include("catalog.urls")), 
+    path("api/catalog/", include("catalog.urls")), 
 
     path("api/basket/", BasketView.as_view()),
     path("api/orders/basket/", BasketView.as_view()),
