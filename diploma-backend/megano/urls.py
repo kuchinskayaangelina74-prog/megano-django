@@ -23,6 +23,12 @@ from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
 from orders.views import BasketView
+from catalog.views import (
+    PopularProductsView,
+    LimitedProductsView,
+    BannersView,
+    CategoryListView,
+)
 
 
 schema_view = get_schema_view(
@@ -46,7 +52,19 @@ urlpatterns = [
     path("api/orders/", include("orders.urls")),
     path("api/users/", include("users.urls")),
 
+    path("api/products/popular", PopularProductsView.as_view()),
+    path("api/products/limited", LimitedProductsView.as_view()),
+
+    path("api/banners", BannersView.as_view()),
+     path("api/categories", CategoryListView.as_view()),
+
     path("", include("frontend.urls")),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+
+
+
+

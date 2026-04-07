@@ -14,3 +14,13 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     count = models.IntegerField()
+
+
+class Basket(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+
+class BasketItem(models.Model):
+    basket = models.ForeignKey(Basket, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey("catalog.Product", on_delete=models.CASCADE)
+    count = models.IntegerField(default=1)

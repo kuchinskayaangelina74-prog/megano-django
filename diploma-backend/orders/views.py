@@ -3,62 +3,103 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from catalog.models import Product
-from .models import Order, OrderItem
+from .models import Order, OrderItem, Basket, BasketItem
 # Create your views here.
 
 
 class BasketView(APIView):
 
     def get(self, request):
-        basket = request.session.get("basket", {})
-
         items = []
         total = 0
-        for product_id, count in basket.items():
-            product = Product.objects.get(id=product_id)
 
-            item_total = float(product.price) * count
-            total += item_total
+        if request.user.is_authenticated:
+            basket, _ = Basket.objects.get_or_create(user=request.user)
+            basket_items = basket.items.all()
 
-            items.append({
-                "id": product.id,
-                "title": product.title,
-                "price": float(product.price),
-                "count": count,
-                "total": item_total,
-            })
+            for item in basket_items:
+                product = item.product
+                item_total = float(product.price) * item.count
+                total += item_total
+
+                items.append({
+                    "id": product.id,
+                    "title": product.title,
+                    "price": float(product.price),
+                    "count": item.count,
+                    "total": item_total,
+                    "image": product.image.url,
+                })
+
+        else:
+            basket = request.session.get("basket", {})
+
+            for product_id, count in basket.items():
+                product = Product.objects.get(id=product_id)
+
+                item_total = float(product.price) * count
+                total += item_total
+
+                items.append({
+                    "id": product.id,
+                    "title": product.title,
+                    "price": float(product.price),
+                    "count": count,
+                    "total": item_total,
+                    "image": product.image.url,
+                })
+        
         return Response({
             "items": items,
             "total": total,
-            "basket": {
-                "items": items,
-                "total": total
-            }
         })
 
     def post(self, request):
-        product_id = str(request.data.get("id"))
+        product_id = request.data.get("id")
         count = int(request.data.get("count", 1))
 
-        basket = request.session.get("basket", {})
+        if request.user.is_authenticated:
+            basket, _ = Basket.objects.get_or_create(user=request.user)
 
-        if product_id in basket:
-            basket[product_id] += count
+            item, created = BasketItem.objects.get_or_create(
+                basket=basket,
+                product_id=product_id
+            )
+
+            if not created:
+                item.count += count
+            else:
+                item.count = count
+
+            item.save()
+
         else:
-            basket[product_id] = count
-        
-        request.session["basket"] = basket
+            basket = request.session.get("basket", {})
+            product_id = str(product_id)
+
+            if product_id in basket:
+                basket[product_id] += count
+            else:
+                basket[product_id] = count
+
+            request.session["basket"] = basket
+
         return Response({"result": "added"})
 
     def delete(self, request):
-        product_id = str(request.data.get("id"))
+        product_id = request.data.get("id")
 
-        basket = request.session.get("basket", {})
+        if request.user.is_authenticated:
+            basket, _ = Basket.objects.get_or_create(user=request.user)
+            BasketItem.objects.filter(basket=basket, product_id=product_id).delete()
+        else:
+            basket = request.session.get("basket", {})
+            product_id = str(product_id)
 
-        if product_id in basket:
-            del basket[product_id]
+            if product_id in basket:
+                del basket[product_id]
 
-        request.session["basket"] = basket
+            request.session["basket"] = basket
 
         return Response({"result": "deleted"})
 
@@ -66,7 +107,7 @@ class BasketView(APIView):
 class OrderView(APIView):
 
     def get(self, request):
-        user = User.objects.first() 
+        user = request.user
 
         orders = Order.objects.filter(user=user)
 
@@ -89,32 +130,53 @@ class OrderView(APIView):
 
 
     def post(self, request):
-        basket = request.session.get("basket", {})
-        user = User.objects.first()  
-
-        if not basket:
-            return Response({"error": "Basket is empty"}, status=400)
+        user = request.user 
 
         total = 0
         order = Order.objects.create(user=user, total_price=0)
 
-        for product_id, count in basket.items():
-            product = Product.objects.get(id=product_id)
+        if request.user.is_authenticated:
+            basket, _ = Basket.objects.get_or_create(user=request.user)
+            items = basket.items.all()
 
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                count=count
-            )
+            if not items:
+                return Response({"error": "Basket is empty"}, status = 400)
 
-            total += product.price * count
+            for item in items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    count=item.count
+                )
+                total += item.product.price * item.count
+
+            basket.items.all().delete()
+
+        else:
+            basket = request.session.get("basket", {})
+
+            if not basket:
+                return Response({"error": "Basket is empty"}, status=400)
+
+            for product_id, count in basket.items():
+                product = Product.objects.get(id=product_id)
+
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    count=count
+                )
+
+                total += product.price * count
+
+            request.session["basket"] = {}
 
         order.total_price = total
         order.save()
-
-        request.session["basket"] = {}
 
         return Response({
             "status": "order created",
             "order_id": order.id
         })
+
+

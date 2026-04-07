@@ -42,7 +42,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
-    images = ProductImageSerializer(many=True, read_only=True)
+    images = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -55,9 +55,18 @@ class ProductSerializer(serializers.ModelSerializer):
             "images",
         ]
 
+    def get_images(self, obj):
+        request = self.context.get("request")
+        if obj.images.exists():
+            return [
+                {"src": request.build_absolute_uri(img.image.url), "alt": img.alt}
+                for img in obj.images.all()
+            ]
 
+        if obj.image:
+            return [{"src": request.build_absolute_uri(obj.image.url), "alt": obj.title}]
 
-
+        return []
 
 
 
