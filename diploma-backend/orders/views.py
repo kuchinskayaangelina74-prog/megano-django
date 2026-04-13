@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from catalog.models import Product
 from .models import Order, OrderItem, Basket, BasketItem
 # Create your views here.
@@ -105,10 +106,13 @@ class BasketView(APIView):
 
 
 class OrderView(APIView):
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({"orders": []}) 
+        
         user = request.user
-
         orders = Order.objects.filter(user=user)
 
         data = []
@@ -130,17 +134,17 @@ class OrderView(APIView):
 
 
     def post(self, request):
-        user = request.user 
-
         total = 0
-        order = Order.objects.create(user=user, total_price=0)
 
         if request.user.is_authenticated:
-            basket, _ = Basket.objects.get_or_create(user=request.user)
+            user = request.user 
+            basket, _ = Basket.objects.get_or_create(user=user)
             items = basket.items.all()
 
             if not items:
                 return Response({"error": "Basket is empty"}, status = 400)
+
+            order = Order.objects.create(user=user, total_price=0)
 
             for item in items:
                 OrderItem.objects.create(
@@ -155,28 +159,58 @@ class OrderView(APIView):
         else:
             basket = request.session.get("basket", {})
 
-            if not basket:
-                return Response({"error": "Basket is empty"}, status=400)
+        if not basket:
+            return Response({"error": "Basket is empty"}, status=400)
 
-            for product_id, count in basket.items():
-                product = Product.objects.get(id=product_id)
+        order = Order.objects.create(user=None, total_price=0)
 
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    count=count
-                )
+        for product_id, count in basket.items():
+            product = Product.objects.get(id=product_id)
 
-                total += product.price * count
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                count=count
+            )
 
-            request.session["basket"] = {}
+            total += product.price * count
+
+        request.session["basket"] = {}
 
         order.total_price = total
         order.save()
 
         return Response({
-            "status": "order created",
-            "order_id": order.id
+            "orderId": order.id
         })
 
 
+class PaymentView(APIView):
+
+    def post(self, request):
+        order_id = request.data.get("orderId")
+        number = request.data.get("number")
+
+        if not order_id or not number:
+            return Response({"error": "Invalid data"}, status=400)
+
+        if not number.isdigit() or len(number) > 8:
+            return Response({"error": "Invalid number"}, status=400)
+
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=404)
+
+        number_int = int(number)
+
+        if number_int % 2 == 0 and not str(number).endswith("0"):
+            order.status = "paid"
+        else:
+            order.status = "failed"
+
+        order.save()
+
+        return Response({
+            "status": order.status
+        })
