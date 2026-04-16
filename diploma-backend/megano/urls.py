@@ -22,12 +22,13 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
-from orders.views import BasketView
+from orders.views import BasketView, OrderView, PaymentView
 from catalog.views import (
     PopularProductsView,
     LimitedProductsView,
     BannersView,
     CategoryListView,
+    ProductDetailView
 )
 
 
@@ -43,12 +44,19 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path('api/', include('orders.urls')),
 
     path("api/catalog/", include("catalog.urls")), 
+
+    path("api/product/<int:pk>", ProductDetailView.as_view()),
 
     path("api/basket/", BasketView.as_view()),
     path("api/orders/basket/", BasketView.as_view()),
 
+    path("api/order/<int:pk>", OrderView.as_view()),
+
+    path("api/order", OrderView.as_view()),
+    path("api/orders", OrderView.as_view()),
     path("api/orders/", include("orders.urls")),
     path("api/users/", include("users.urls")),
 
@@ -56,7 +64,10 @@ urlpatterns = [
     path("api/products/limited", LimitedProductsView.as_view()),
 
     path("api/banners", BannersView.as_view()),
-     path("api/categories", CategoryListView.as_view()),
+    path("api/categories", CategoryListView.as_view()),
+
+    path("api/payment/<int:pk>", PaymentView.as_view()),
+    path("api/payment", PaymentView.as_view()),
 
     path("", include("frontend.urls")),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),

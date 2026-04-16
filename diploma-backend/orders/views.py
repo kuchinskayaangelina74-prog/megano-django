@@ -1,3 +1,4 @@
+import json
 from django.contrib.auth.models import User
 from django.shortcuts import render
 from rest_framework.views import APIView
@@ -7,12 +8,10 @@ from catalog.models import Product
 from .models import Order, OrderItem, Basket, BasketItem
 # Create your views here.
 
-
 class BasketView(APIView):
 
     def get(self, request):
         items = []
-        total = 0
 
         if request.user.is_authenticated:
             basket, _ = Basket.objects.get_or_create(user=request.user)
@@ -20,165 +19,220 @@ class BasketView(APIView):
 
             for item in basket_items:
                 product = item.product
-                item_total = float(product.price) * item.count
-                total += item_total
 
                 items.append({
                     "id": product.id,
                     "title": product.title,
                     "price": float(product.price),
                     "count": item.count,
-                    "total": item_total,
-                    "image": product.image.url,
+                    "images": [
+                        {
+                            "src": request.build_absolute_uri(product.image.url)
+                            if product.image
+                            else "",
+                            "alt": product.title,
+                        }
+                    ],
                 })
 
         else:
             basket = request.session.get("basket", {})
-
+            cleaned_basket = {}
             for product_id, count in basket.items():
-                product = Product.objects.get(id=product_id)
+        
+                if product_id is None or count is None:
+                    continue
 
-                item_total = float(product.price) * count
-                total += item_total
+                try:
+                    product_id_int = int(product_id)
+                    count_int = int(count)
+                except (TypeError, ValueError):
+                    continue
 
+                if count_int <= 0:
+                    continue
+
+                try:
+                    product = Product.objects.get(id=product_id_int)
+                except (Product.DoesNotExist, TypeError, ValueError):
+                    continue 
+                
                 items.append({
                     "id": product.id,
                     "title": product.title,
                     "price": float(product.price),
-                    "count": count,
-                    "total": item_total,
-                    "image": product.image.url,
+                    "count": count_int,
+                    "images": [
+                        {
+                            "src": request.build_absolute_uri(product.image.url)
+                            if product.image
+                            else "",
+                            "alt": product.title,
+                        }
+                    ],
                 })
+                cleaned_basket[str(product_id_int)] = count_int
+
+            if cleaned_basket != basket:
+                request.session["basket"] = cleaned_basket
         
-        return Response({
-            "items": items,
-            "total": total,
-        })
+        return Response(items)
 
     def post(self, request):
-        product_id = request.data.get("id")
-        count = int(request.data.get("count", 1))
+        payload = request.data 
+        product_id = payload.get("id")
+        count_raw = payload.get("count", 1)
 
+        try:
+            product_id_int = int(product_id)
+        except (TypeError, ValueError):
+            return self.get(request)
+
+        try:
+            count_int = int(count_raw)
+        except (TypeError, ValueError):
+            count_int = 1
+
+        if product_id_int <= 0 or count_int <= 0:
+            return self.get(request)
+        
         if request.user.is_authenticated:
             basket, _ = Basket.objects.get_or_create(user=request.user)
 
             item, created = BasketItem.objects.get_or_create(
                 basket=basket,
-                product_id=product_id
+                product_id=product_id_int
             )
 
             if not created:
-                item.count += count
+                item.count += count_int
             else:
-                item.count = count
-
+                item.count = count_int
             item.save()
 
         else:
             basket = request.session.get("basket", {})
-            product_id = str(product_id)
-
-            if product_id in basket:
-                basket[product_id] += count
-            else:
-                basket[product_id] = count
-
+            key = str(product_id_int)
+            basket[key] = basket.get(key, 0) + count_int
             request.session["basket"] = basket
 
-        return Response({"result": "added"})
+        return self.get(request)
+
 
     def delete(self, request):
-        product_id = request.data.get("id")
+        payload = request.data 
+        product_id = payload.get("id")
+
+        try:
+            product_id_int = int(product_id)
+        except (TypeError, ValueError):
+                return self.get(request)
+
+        if product_id_int <= 0:
+            return self.get(request)
 
         if request.user.is_authenticated:
             basket, _ = Basket.objects.get_or_create(user=request.user)
-            BasketItem.objects.filter(basket=basket, product_id=product_id).delete()
+            BasketItem.objects.filter(basket=basket, product_id=product_id_int).delete()
         else:
             basket = request.session.get("basket", {})
-            product_id = str(product_id)
+            key = str(product_id_int)
 
-            if product_id in basket:
-                del basket[product_id]
+            if key in basket:
+                del basket[key]
 
             request.session["basket"] = basket
 
-        return Response({"result": "deleted"})
+        return self.get(request)
 
 
 class OrderView(APIView):
-    # permission_classes = [IsAuthenticated]
-
-    def get(self, request):
+    
+    def get(self, request, pk=None):
         if not request.user.is_authenticated:
-            return Response({"orders": []}) 
-        
-        user = request.user
-        orders = Order.objects.filter(user=user)
+            return Response([]) 
 
-        data = []
-        for order in orders:
-            items = []
-            for item in order.items.all():
-                items.append({
-                    "product": item.product.title,
-                    "count": item.count
+        if pk:
+            try:
+                order = Order.objects.get(id=pk, user=request.user)
+                return Response({
+                    "id": order.id,
+                    "createdAt": "2025-04-16 18:00",
+                    "fullName": request.user.get_full_name() or request.user.username,
+                    "email": request.user.email,
+                    "phone": "123456654321",
+                    "deliveryType": "free",
+                    "paymentType": "online",
+                    "totalCost": float(order.total_price),
+                    "status": order.status,
+                    "city": "Moscow",
+                    "address": "Arbat str.",
+                    "products": [
+                        {
+                            "id": item.product.id,
+                            "title": item.product.title,
+                            "price": float(item.product.price),
+                            "count": item.count,
+                        } for item in order.items.all()
+                    ]
                 })
+            except Order.DoesNotExist:
+                return Response({"error": "Order not found"}, status=404)
 
+        orders = Order.objects.filter(user=request.user)
+        data = []
+
+        for order in orders:
             data.append({
                 "id": order.id,
-                "total": float(order.total_price),
-                "items": items
+                "createdAt": "2025-04-16 18:00",
+                "fullName": request.user.get_full_name() or request.user.username,
+                "email": request.user.email,
+                "phone": "123456654321",
+                "deliveryType": "free",
+                "paymentType": "online",
+                "totalCost": float(order.total_price),
+                "status": order.status,
+                "products": [
+                    {
+                        "id": item.product.id,
+                        "title": item.product.title,
+                        "price": float(item.product.price),
+                        "count": item.count,
+                    } for item in order.items.all()
+                ]
             })
+        return Response(data)
+            
 
-        return Response({"orders": data})
+    def post(self, request, pk=None):
+        if pk:
+            return Response({"orderId": pk})
 
+        if not request.user.is_authenticated:
+            return Response({"error": "Auth required"}, status=401)
 
-    def post(self, request):
-        total = 0
+        user = request.user 
+        basket, _ = Basket.objects.get_or_create(user=user)
+        items = basket.items.all()
 
-        if request.user.is_authenticated:
-            user = request.user 
-            basket, _ = Basket.objects.get_or_create(user=user)
-            items = basket.items.all()
-
-            if not items:
-                return Response({"error": "Basket is empty"}, status = 400)
-
-            order = Order.objects.create(user=user, total_price=0)
-
-            for item in items:
-                OrderItem.objects.create(
-                    order=order,
-                    product=item.product,
-                    count=item.count
-                )
-                total += item.product.price * item.count
-
-            basket.items.all().delete()
-
-        else:
-            basket = request.session.get("basket", {})
-
-        if not basket:
+        if not items.exists():
             return Response({"error": "Basket is empty"}, status=400)
 
-        order = Order.objects.create(user=None, total_price=0)
+        order = Order.objects.create(user=user, total_price=0, status="created")
+        total = 0
 
-        for product_id, count in basket.items():
-            product = Product.objects.get(id=product_id)
-
+        for item in items:
             OrderItem.objects.create(
                 order=order,
-                product=product,
-                count=count
+                product=item.product,
+                count=item.count
             )
-
-            total += product.price * count
-
-        request.session["basket"] = {}
+            total += item.product.price * item.count
 
         order.total_price = total
         order.save()
+        items.delete()
 
         return Response({
             "orderId": order.id
@@ -187,14 +241,16 @@ class OrderView(APIView):
 
 class PaymentView(APIView):
 
-    def post(self, request):
-        order_id = request.data.get("orderId")
+    def post(self, request, pk=None):
+        order_id = pk or request.data.get("orderId")
         number = request.data.get("number")
 
         if not order_id or not number:
             return Response({"error": "Invalid data"}, status=400)
+        
+        number = str(number).replace(" ", "")
 
-        if not number.isdigit() or len(number) > 8:
+        if not number.isdigit() or len(number) > 16:
             return Response({"error": "Invalid number"}, status=400)
 
         try:
@@ -203,7 +259,6 @@ class PaymentView(APIView):
             return Response({"error": "Order not found"}, status=404)
 
         number_int = int(number)
-
         if number_int % 2 == 0 and not str(number).endswith("0"):
             order.status = "paid"
         else:
