@@ -3,13 +3,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Product, Category, Review
 from .serializers import ProductSerializer, CategorySerializer
+from django.db.models import Count
 
 # Create your views here.
 class ProductListView(ListAPIView):
     serializer_class = ProductSerializer
 
     def get_queryset(self):
-        queryset = Product.objects.select_related("category").prefetch_related("tags", "images")
+        queryset = Product.objects.select_related("category").prefetch_related("tags", "images", "reviews")
 
         search = self.request.GET.get("filter[name]")
         if search:
@@ -36,6 +37,11 @@ class ProductListView(ListAPIView):
         sort_type = self.request.GET.get("sortType")
 
         if sort:
+            if sort == 'reviews':
+                
+                queryset = queryset.annotate(reviews_count=Count('reviews'))
+                sort = 'reviews_count'
+
             if sort_type == "dec":
                 sort = f"-{sort}"
             queryset = queryset.order_by(sort)
@@ -44,103 +50,36 @@ class ProductListView(ListAPIView):
 
 
 class ProductDetailView(RetrieveAPIView):
-    queryset = Product.objects.select_related("category").prefetch_related("tags")
+    queryset = Product.objects.select_related("category").prefetch_related("tags", "images", "reviews")
     serializer_class = ProductSerializer
 
 
 class PopularProductsView(APIView):
 
     def get(self, request):
-        products = Product.objects.order_by("-created_at")[:3]
-
-        items = []
-        for p in products:
-            items.append({
-                "id": p.id,
-                "title": p.title,
-                "price": float(p.price),
-                "images": [
-                    {
-                        "src": request.build_absolute_uri(img.image.url),
-                        "alt": img.alt
-                    }
-                    for img in p.images.all()
-                ] if  p.images.exists() else (
-                    [
-                        {
-                            "src": request.build_absolute_uri(p.image.url),
-                            "alt": p.title
-                        }
-                    ]if p.image else []
-                )
-            })
-
-        return Response(items)
+        products = Product.objects.order_by("-rating", "-date")[:8]
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 class LimitedProductsView(APIView):
 
     def get(self, request):
-        products = Product.objects.order_by("-created_at")[:3]
-
-        items = []
-        for p in products:
-            items.append({
-                "id": p.id,
-                "title": p.title,
-                "price": float(p.price),
-                "images": [
-                    {
-                        "src": request.build_absolute_uri(img.image.url),
-                        "alt": img.alt
-                    }
-                    for img in p.images.all()
-                ] if p.images.exists() else (
-                    [
-                        {
-                            "src": request.build_absolute_uri(p.image.url),
-                            "alt": p.title
-                        }
-                    ] if p.image else []
-                )
-            })
-
-        return Response(items)
+        products = Product.objects.filter(is_limited_edition=True).order_by("-date")[:8]
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
     
 
 class BannersView(APIView):
 
     def get(self, request):
-        products = Product.objects.select_related("category").prefetch_related("images", "tags").all()[:3]
-
-        items = [
-            {
-                "id": p.id,
-                "title": p.title,
-                "price": float(p.price),
-                "images": [
-                    {
-                        "src": request.build_absolute_uri(img.image.url),
-                        "alt": img.alt
-                    }
-                    for img in p.images.all()
-                ] if p.images.exists() else (
-                    [
-                        {
-                            "src":request.build_absolute_uri(p.image.url),
-                            "alt": p.title
-                        }
-                    ] if p.image else []
-                )
-            }
-            for p in products
-        ]
-
-        return Response(items)
+        products = Product.objects.filter(is_banner=True)[:3]
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 class CategoryListView(ListAPIView):
-    queryset = Category.objects.all()
+    queryset = Category.objects.filter(parent=None)
     serializer_class = CategorySerializer
 
 
@@ -156,32 +95,15 @@ class ReviewView(APIView):
             text=request.data.get("text"),
             rate=request.data.get("rate"),
         )
-
+        reviews = product.reviews.all()
+        product.rating = sum([r.rate for r in reviews]) / reviews.count()
+        product.save()
         return Response({"status": "review added"})
 
 
 class SalesView(APIView):
 
     def get(self, request):
-        products = Product.objects.all()[:3]
-
-        items = []
-        for p in products:
-            items.append({
-                "id": p.id,
-                "title": p.title,
-                "price": float(p.price),
-                "salePrice": float(p.price) * 0.8,
-                "images": [
-                    {
-                        "src": request.build_absolute_uri(p.image.url),
-                        "alt": p.title
-                    }
-                ] if p.image else []
-            })
-
-        return Response(items)
-
-
-
-    
+        products = Product.objects.filter(price__lt=5000)[:10] 
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)

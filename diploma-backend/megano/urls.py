@@ -28,7 +28,8 @@ from catalog.views import (
     LimitedProductsView,
     BannersView,
     CategoryListView,
-    ProductDetailView
+    ProductDetailView,
+    ReviewView
 )
 
 
@@ -47,6 +48,8 @@ urlpatterns = [
     path('api/', include('orders.urls')),
 
     path("api/catalog/", include("catalog.urls")), 
+
+    path("api/product/<int:pk>/reviews", ReviewView.as_view()), 
 
     path("api/product/<int:pk>", ProductDetailView.as_view()),
 

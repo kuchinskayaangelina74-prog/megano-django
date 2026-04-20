@@ -13,8 +13,8 @@ from .views import(
 
 urlpatterns = [
     path("products/", ProductListView.as_view()),
-    path("products/<int:pk>/", ProductDetailView.as_view(), name="product-detail"),
-    path("products/<int:pk>/reviews/", ReviewView.as_view()),
+    path("products/<int:pk>", ProductDetailView.as_view(), name="product-detail"),
+    path("products/<int:pk>/reviews", ReviewView.as_view()),
     
     path("products/popular/", PopularProductsView.as_view()),
     path("products/limited/", LimitedProductsView.as_view()),
