@@ -42,6 +42,9 @@ class ProductListView(ListAPIView):
                 queryset = queryset.annotate(reviews_count=Count('reviews'))
                 sort = 'reviews_count'
 
+            if sort == 'rating':
+                return sorted(queryset, key=lambda p: p.rating, reverse=(sort_type == "dec"))
+
             if sort_type == "dec":
                 sort = f"-{sort}"
             queryset = queryset.order_by(sort)
@@ -57,7 +60,8 @@ class ProductDetailView(RetrieveAPIView):
 class PopularProductsView(APIView):
 
     def get(self, request):
-        products = Product.objects.order_by("-rating", "-date")[:8]
+        products = list(Product.objects.filter(archived=False))
+        products = sorted(products, key=lambda p: p.rating, reverse=True)[:8]
         serializer = ProductSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 
@@ -95,9 +99,7 @@ class ReviewView(APIView):
             text=request.data.get("text"),
             rate=request.data.get("rate"),
         )
-        reviews = product.reviews.all()
-        product.rating = sum([r.rate for r in reviews]) / reviews.count()
-        product.save()
+        
         return Response({"status": "review added"})
 
 

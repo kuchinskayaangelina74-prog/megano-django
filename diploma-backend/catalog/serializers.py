@@ -46,10 +46,9 @@ class ProductSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     images = serializers.SerializerMethodField()
     reviews = ReviewSerializer(many=True, read_only=True)
-    reviewsCount = serializers.IntegerField(source='reviews.count', read_only=True)
-
     freeDelivery = serializers.SerializerMethodField()
-    rating = serializers.FloatField(read_only=True)
+
+    rating = serializers.ReadOnlyField() 
 
     class Meta:
         model = Product
@@ -60,14 +59,13 @@ class ProductSerializer(serializers.ModelSerializer):
             "count",
             "date",
             "description",
-            "full_description",
+            "fullDescription",
             "freeDelivery", 
             "reviews",
             "rating",
             "category",
             "tags",
             "images",
-            "reviewsCount",
         ]
 
     def get_freeDelivery(self, obj):

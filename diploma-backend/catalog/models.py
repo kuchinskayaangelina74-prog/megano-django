@@ -33,13 +33,18 @@ class Product(models.Model):
 
     title = models.CharField(max_length=255)
     description = models.TextField()
-    full_description = models.TextField(blank=True)
+    fullDescription = models.TextField(blank=True)
 
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     count = models.IntegerField(default=0)
     
     date = models.DateTimeField(auto_now_add=True)
-    rating = models.FloatField(default=0.0)
+    @property
+    def rating(self):
+        reviews = self.reviews.all()
+        if not reviews:
+            return 0.0
+        return round(sum(r.rate for r in reviews) / reviews.count(), 1)
 
     is_limited_edition = models.BooleanField(default=False)
     is_banner = models.BooleanField(default=False)

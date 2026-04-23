@@ -26,15 +26,15 @@ class SignInView(APIView):
 class SignUpView(APIView):
 
     def post(self, request):
-        data = json.loads(request.body)
-        username = data.get("username")
-        password = data.get("password")
+        username = request.data.get("username")
+        password = request.data.get("password")
+        name = request.data.get("name", "") 
 
         if User.objects.filter(username=username).exists():
             return Response({"error": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.create_user(username=username, password=password)
-        user.profile.fullName = data.get("name", "")
+        user.profile.fullName = name
         user.profile.save()
 
         login(request, user)

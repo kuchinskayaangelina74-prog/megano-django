@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from users.views import ProfileView, ProfilePasswordView, AvatarUpdateView
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -46,29 +47,26 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('api/', include('orders.urls')),
+    path("api/users/", include("users.urls")),
+
+    path("api/profile", ProfileView.as_view(), name="profile"),
+    path("api/profile/password", ProfilePasswordView.as_view(), name="profile-password"),
+    path("api/profile/avatar", AvatarUpdateView.as_view(), name="profile-avatar"),
 
     path("api/catalog/", include("catalog.urls")), 
-
     path("api/product/<int:pk>/reviews", ReviewView.as_view()), 
-
     path("api/product/<int:pk>", ProductDetailView.as_view()),
-
-    path("api/basket/", BasketView.as_view()),
-    path("api/orders/basket/", BasketView.as_view()),
-
+    path("api/basket", BasketView.as_view()),
+    path("api/orders/basket", BasketView.as_view()),
     path("api/order/<int:pk>", OrderView.as_view()),
-
     path("api/order", OrderView.as_view()),
     path("api/orders", OrderView.as_view()),
     path("api/orders/", include("orders.urls")),
     path("api/users/", include("users.urls")),
-
     path("api/products/popular", PopularProductsView.as_view()),
     path("api/products/limited", LimitedProductsView.as_view()),
-
     path("api/banners", BannersView.as_view()),
     path("api/categories", CategoryListView.as_view()),
-
     path("api/payment/<int:pk>", PaymentView.as_view()),
     path("api/payment", PaymentView.as_view()),
 
