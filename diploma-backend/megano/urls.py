@@ -1,0 +1,82 @@
+"""
+URL configuration for shop project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/6.0/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from users.views import ProfileView, ProfilePasswordView, AvatarUpdateView
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+from django.contrib import admin
+from django.urls import path, include
+from django.views.generic import TemplateView
+from django.conf import settings
+from django.conf.urls.static import static
+from orders.views import BasketView, OrderView, PaymentView
+from catalog.views import (
+    PopularProductsView,
+    LimitedProductsView,
+    BannersView,
+    CategoryListView,
+    ProductDetailView,
+    ReviewView
+)
+
+
+schema_view = get_schema_view(
+   openapi.Info(
+      title="Shop API",
+      default_version='v1',
+      description="API documentation",
+   ),
+   public=True,
+   permission_classes=(permissions.AllowAny,),
+)
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path('api/', include('orders.urls')),
+    path("api/users/", include("users.urls")),
+
+    path("api/profile", ProfileView.as_view(), name="profile"),
+    path("api/profile/password", ProfilePasswordView.as_view(), name="profile-password"),
+    path("api/profile/avatar", AvatarUpdateView.as_view(), name="profile-avatar"),
+
+    path("api/catalog/", include("catalog.urls")), 
+    path("api/product/<int:pk>/reviews", ReviewView.as_view()), 
+    path("api/product/<int:pk>", ProductDetailView.as_view()),
+    path("api/basket", BasketView.as_view()),
+    path("api/orders/basket", BasketView.as_view()),
+    path("api/order/<int:pk>", OrderView.as_view()),
+    path("api/order", OrderView.as_view()),
+    path("api/orders", OrderView.as_view()),
+    path("api/orders/", include("orders.urls")),
+    path("api/users/", include("users.urls")),
+    path("api/products/popular", PopularProductsView.as_view()),
+    path("api/products/limited", LimitedProductsView.as_view()),
+    path("api/banners", BannersView.as_view()),
+    path("api/categories", CategoryListView.as_view()),
+    path("api/payment/<int:pk>", PaymentView.as_view()),
+    path("api/payment", PaymentView.as_view()),
+
+    path("", include("frontend.urls")),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
+]
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+
+
+
+
