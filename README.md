@@ -2,14 +2,46 @@
 
 **Установка и развёртывание**
 
-1. Клонирование репозитория:
-   git clone <ссылка-на-репозиторий>
-2. Установка зависимостей:
+### Вариант 1. Быстрый запуск в Docker (Рекомендуемый)
+Для запуска проекта необходим установленный Docker Desktop. Этот способ автоматически развернет бэкенд на Django и промышленную базу данных PostgreSQL.
+
+1. Клонируйте репозиторий:
+   ```bash
+   git clone https://github.com
+   cd megano-django
+   ```
+2. Запустите сборку и старт контейнеров:
+   ```bash
+   docker-compose up --build
+   ```
+3. Создайте суперпользователя (администратора) в новом окне терминала:
+   ```bash
+   docker-compose exec web python diploma-backend/manage.py createsuperuser
+   ```
+Проект будет доступен по адресу: http://localhost:8000/
+
+---
+
+### Вариант 2. Локальный запуск (Классический)
+Для запуска непосредственно на хост-машине с использованием локальной базы данных:
+
+1. Клонируйте репозиторий и перейдите в папку:
+   ```bash
+   git clone https://github.com
+   cd megano-django
+   ```
+2. Установите зависимости проекта:
+   ```bash
    pip install -r requirements.txt
-3. Миграции базы данных:
-   python manage.py migrate
-4. Запуск сервера:
-   python manage.py runserver
+   ```
+3. Выполните миграции базы данных:
+   ```bash
+   python diploma-backend/manage.py migrate
+   ```
+4. Запустите сервер разработки:
+   ```bash
+   python diploma-backend/manage.py runserver
+   ```
 
 **Основные компоненты**
 *Фронтенд*
